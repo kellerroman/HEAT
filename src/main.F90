@@ -1,8 +1,7 @@
 program HEAT
    use io, only : read_git,write_sol,read_bc,read_sol
    use control
-   !use sparse_mat
-   use solver
+!   use solver
    use data!, only: init,block,nBlock
    use flux
    use time_int, only: update_sol, calc_timestep, set_timestep
@@ -68,7 +67,7 @@ program HEAT
 !            write(*,*) rhs
 
 
-            call solve_system(nCell,rhs,sol,mat,jmat,imat,1)
+            !call solve_system(nCell,rhs,sol,mat,jmat,imat,1)
 !           call solve_sys (nCell,n_nonzero_elements,vec_size1,vec_size2,vec_size3 &
 !                           ,mat,row_pos,col_pos,rhs &
 !                           ,pivot,ha,real_flag,int_flag,error_flag)

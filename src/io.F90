@@ -1,6 +1,6 @@
 module io
-   use cgnslib
-   use cgns_types, ONLY: CGSIZE_T
+!   use cgnslib
+!   use cgns_types, ONLY: CGSIZE_T
    use const
    use control, only: Dimen,nFace,nCorner,n_BC_Cell
    implicit none
@@ -28,10 +28,10 @@ contains
       use control, only: file_git_in
       implicit none
 
-      integer(kind=CGSIZE_T) :: b ,d
+      integer(kind=8) :: b ,d
       logical :: fexists
-      integer(kind=CGSIZE_T) :: cgns_file,ierror,cgns_base,PhysDim,cgns_zone,zonetype
-      integer(kind=CGSIZE_T),allocatable :: isize(:,:),istart(:)
+      integer(kind=8) :: cgns_file,ierror,cgns_base,PhysDim,cgns_zone,zonetype
+      integer(kind=8),allocatable :: isize(:,:),istart(:)
       character(len=32),parameter :: coord_name(3) = (/ "CoordinateX","CoordinateY","CoordinateZ" /)
       real(kind=dp), allocatable :: temp_coord(:,:,:)
 
@@ -40,21 +40,23 @@ contains
       inquire(file=trim(file_git_in),exist=fexists)
 
       if(.not. fexists) then
-        call error_out("GITTER INPUT DATEI konnte nicht gefunden werden: "//TRIM(file_git_in),__FILE__,__LINE__)
+        call error_out("GITTER INPUT DATEI konnte nicht gefunden werden: " &
+                       //TRIM(file_git_in),__FILE__,__LINE__)
       end if
 
 
-      call cg_open_f(trim(file_git_in),CG_MODE_READ,cgns_file,ierror)
-      if (ierror /= CG_OK) call cg_error_exit_f()
+!      call cg_open_f(trim(file_git_in),CG_MODE_READ,cgns_file,ierror)
+!      if (ierror /= CG_OK) call cg_error_exit_f()
 
-      call cg_nbases_f(cgns_file,cgns_base,ierror)
-      if (ierror /= CG_OK) call cg_error_exit_f()
+!      call cg_nbases_f(cgns_file,cgns_base,ierror)
+!      if (ierror /= CG_OK) call cg_error_exit_f()
 
       if (cgns_base /= 1) then
-         call error_out("Input Grid File has more than one base",__FILE__,__LINE__)
+         call error_out("Input Grid File has more than one base" &
+                          ,__FILE__,__LINE__)
       end if
 
-      call cg_base_read_f(cgns_file,cgns_base,cgns_git_basename,Dimen,PhysDim,ierror)
+!      call cg_base_read_f(cgns_file,cgns_base,cgns_git_basename,Dimen,PhysDim,ierror)
 
       allocate(isize(Dimen,3))
       allocate(istart(Dimen))
@@ -63,22 +65,23 @@ contains
       nCorner = 2**Dimen
       istart = 1
 
-      call cg_nzones_f(cgns_file,cgns_base,nBlock,ierror)
-      if (ierror /= CG_OK) call cg_error_exit_f()
+!      call cg_nzones_f(cgns_file,cgns_base,nBlock,ierror)
+!      if (ierror /= CG_OK) call cg_error_exit_f()
 
       allocate(block(nBlock))
       allocate(cgns_git_zonename(nBlock))
 
       do b = 1,nBlock
          cgns_zone = b
-         call cg_zone_read_f(cgns_file,cgns_base,cgns_zone,cgns_git_zonename(b),isize,ierror)
-         if (ierror /= CG_OK) call cg_error_exit_f()
+!         call cg_zone_read_f(cgns_file,cgns_base,cgns_zone,cgns_git_zonename(b),isize,ierror)
+!         if (ierror /= CG_OK) call cg_error_exit_f()
 
-         call cg_zone_type_f(cgns_file,cgns_base,cgns_zone,zonetype,ierror)
-         if (ierror /= CG_OK) call cg_error_exit_f()
-         if (zonetype /= Structured) then
-            call error_out("Only Structured Grid supported."//TRIM(file_git_in),__FILE__,__LINE__)
-         end if
+!         call cg_zone_type_f(cgns_file,cgns_base,cgns_zone,zonetype,ierror)
+!         if (ierror /= CG_OK) call cg_error_exit_f()
+!         if (zonetype /= Structured) then
+!            call error_out("Only Structured Grid supported." &
+!                             //TRIM(file_git_in),__FILE__,__LINE__)
+!         end if
          block(b) % nPkt = 1
          block(b) % nCell = 1
          block(b) % nPkt(1:Dimen) = int(isize(1:Dimen,1))
@@ -90,9 +93,9 @@ contains
                                  ,Dimen))
          allocate (temp_coord(block(b)%nPkt(1),block(b)%nPkt(2),block(b)%nPkt(3)))
          do d = 1,Dimen
-            call cg_coord_read_f(cgns_file,cgns_base,cgns_zone,coord_name(d),RealDouble &
-                                ,istart,isize(:,1),temp_coord,ierror)
-            if (ierror /= CG_OK) call cg_error_exit_f()
+!            call cg_coord_read_f(cgns_file,cgns_base,cgns_zone,coord_name(d),RealDouble &
+!                                ,istart,isize(:,1),temp_coord,ierror)
+!            if (ierror /= CG_OK) call cg_error_exit_f()
             block(b) % xyz(1:block(b)%nPkt(1) &
                           ,1:block(b)%nPkt(2) &
                           ,1:block(b)%nPkt(3),d) = temp_coord
@@ -101,8 +104,8 @@ contains
 
       end do
 
-      call cg_close_f(cgns_file,ierror)
-      if (ierror /= CG_OK) call cg_error_exit_f()
+!      call cg_close_f(cgns_file,ierror)
+!      if (ierror /= CG_OK) call cg_error_exit_f()
       write(*,*) "GIT IN"
       write(*,*) dimen,nblock,ncell
       do b = 1,nBlock
@@ -115,13 +118,13 @@ contains
       use data, only : nBlock, block
       use control, only : iter,sol_out,file_sol_out,iter_sol_out,max_iter,file_git_in
       implicit none
-      integer(kind=CGSIZE_T) :: cgns_file,ierror,cgns_base,cgns_zone,cgns_sol,cgns_var,cgns_coord
-      integer(kind=CGSIZE_T),allocatable :: isize(:,:)
-      integer(kind=CGSIZE_T) :: iter_in_file
+      integer(kind=8) :: cgns_file,ierror,cgns_base,cgns_zone,cgns_sol,cgns_var,cgns_coord
+      integer(kind=8),allocatable :: isize(:,:)
+      integer(kind=8) :: iter_in_file
       character(len=32)  :: solname
       character(len=100) :: linkname
       character(len=11),parameter :: coordnames(3) = (/"CoordinateX","CoordinateY","CoordinateZ"/)
-      integer(kind=CGSIZE_T) :: b,d
+      integer(kind=8) :: b,d
       if (mod(iter,iter_sol_out) == 0 .or. iter == max_iter) then
          sol_out = .true.
       end if
@@ -134,11 +137,11 @@ contains
 !            write(*,*) "Writing New Solution to File "//trim(file_sol_out)
             write_sol_header = .false.
 
-            call cg_open_f(trim(file_sol_out),CG_MODE_WRITE,cgns_file,ierror)
-            if (ierror /= CG_OK) call cg_error_exit_f()
+!            call cg_open_f(trim(file_sol_out),CG_MODE_WRITE,cgns_file,ierror)
+!            if (ierror /= CG_OK) call cg_error_exit_f()
 
-            call cg_base_write_f(cgns_file,"SOLUTION",Dimen,Dimen,cgns_base,ierror)
-            if (ierror /= CG_OK) call cg_error_exit_f()
+!            call cg_base_write_f(cgns_file,"SOLUTION",Dimen,Dimen,cgns_base,ierror)
+!            if (ierror /= CG_OK) call cg_error_exit_f()
 
             allocate(isize(Dimen,3))
             isize = 0
@@ -148,15 +151,15 @@ contains
                isize(:,1) = block(b) % nPkt(1:Dimen)
                isize(:,2) = block(b) % nCell(1:Dimen)
 
-               call cg_zone_write_f(cgns_file,cgns_base,cgns_git_zonename(b),isize,Structured,cgns_zone,ierror)
+!               call cg_zone_write_f(cgns_file,cgns_base,cgns_git_zonename(b),isize,Structured,cgns_zone,ierror)
 
-               if (ierror /= CG_OK) call cg_error_exit_f()
+!               if (ierror /= CG_OK) call cg_error_exit_f()
                do d = 1, Dimen
-                  call cg_coord_write_f(cgns_file,cgns_base,cgns_zone,RealDouble,coordnames(d) &
-                                       ,block(b) % xyz(1:block(b) % nPkt(1)            &
-                                                      ,1:block(b) % nPkt(2)            &
-                                                      ,1:block(b) % nPkt(3),d),cgns_coord,ierror)
-                  if (ierror /= CG_OK) call cg_error_exit_f()
+!                  call cg_coord_write_f(cgns_file,cgns_base,cgns_zone,RealDouble,coordnames(d) &
+!                                       ,block(b) % xyz(1:block(b) % nPkt(1)            &
+!                                                      ,1:block(b) % nPkt(2)            &
+!                                                      ,1:block(b) % nPkt(3),d),cgns_coord,ierror)
+!                  if (ierror /= CG_OK) call cg_error_exit_f()
                end do
 
 !               write(*,*) "WRITING GRID LINK"
@@ -172,7 +175,7 @@ contains
       !         call cg_array_write_f('FlowSolutionPointers',Character,1,32,solname,ierror)
 
             end do
-            call cg_biter_write_f(cgns_file,cgns_base,"TimeIterValues",1,ierror)
+!            call cg_biter_write_f(cgns_file,cgns_base,"TimeIterValues",1,ierror)
 
 
       !      call cg_goto_f(cgns_file,cgns_base,ierror,'BaseIterativeData_t',1,'end')
@@ -182,11 +185,11 @@ contains
 
          else
 !            write(*,*) "Appending Solution to existing File: "//trim(file_sol_out)
-            call cg_open_f(trim(file_sol_out),CG_MODE_MODIFY,cgns_file,ierror)
-            if (ierror /= CG_OK) call cg_error_exit_f()
+!            call cg_open_f(trim(file_sol_out),CG_MODE_MODIFY,cgns_file,ierror)
+!            if (ierror /= CG_OK) call cg_error_exit_f()
 !            write(*,*) "reading nbases"
-            call cg_nbases_f(cgns_file,cgns_base,ierror)
-            if (ierror /= CG_OK) call cg_error_exit_f()
+!            call cg_nbases_f(cgns_file,cgns_base,ierror)
+!            if (ierror /= CG_OK) call cg_error_exit_f()
 
       !      call cg_zone_type_f(cgns_file,cgns_base,cgns_zone,zonetype,ierror)
       !      if (ierror /= CG_OK) call cg_error_exit_f()
@@ -194,10 +197,10 @@ contains
       !         call error_out("Only Structured Grid supported."//TRIM(file_git_in),__FILE__,__LINE__)
       !      end if
 
-            call cg_biter_read_f(cgns_file,cgns_base,linkname,iter_in_file,ierror)
+!            call cg_biter_read_f(cgns_file,cgns_base,linkname,iter_in_file,ierror)
             iter_in_file = iter_in_file + 1
 !            write(*,*) "Iterations on File:",iter_in_file
-            call cg_biter_write_f(cgns_file,cgns_base,linkname,iter_in_file,ierror)
+!            call cg_biter_write_f(cgns_file,cgns_base,linkname,iter_in_file,ierror)
 
       !      if (iter_in_file == 2) then
       !
@@ -223,12 +226,12 @@ contains
          do b = 1,nBlock
             cgns_zone = b
 
-            call cg_sol_write_f(cgns_file,cgns_base,cgns_zone,solname,CellCenter,cgns_sol,ierror)
-            if (ierror /= CG_OK) call cg_error_exit_f()
-            call cg_field_write_f(cgns_file,cgns_base,cgns_zone,cgns_sol,RealDouble         &
-                                 ,"Temperature",block(b) % T(1:block(b) % nCell(1)            &
-                                                            ,1:block(b) % nCell(2)            &
-                                                            ,1:block(b) % nCell(3),1),cgns_var,ierror)
+!            call cg_sol_write_f(cgns_file,cgns_base,cgns_zone,solname,CellCenter,cgns_sol,ierror)
+!            if (ierror /= CG_OK) call cg_error_exit_f()
+!            call cg_field_write_f(cgns_file,cgns_base,cgns_zone,cgns_sol,RealDouble         &
+!                                 ,"Temperature",block(b) % T(1:block(b) % nCell(1)            &
+!                                                            ,1:block(b) % nCell(2)            &
+!                                                            ,1:block(b) % nCell(3),1),cgns_var,ierror)
 !            call cg_field_write_f(cgns_file,cgns_base,cgns_zone,cgns_sol,RealDouble         &
 !                                 ,"Heat Transfer Koeff",block(b) % a(1:block(b) % nCell(1)            &
 !                                                            ,1:block(b) % nCell(2)            &
@@ -238,8 +241,8 @@ contains
 !                                                            ,1:block(b) % nCell(2)            &
 !                                                            ,1:block(b) % nCell(3),1),cgns_var,ierror)
          end do
-         call cg_close_f(cgns_file,ierror)
-         if (ierror /= CG_OK) call cg_error_exit_f()
+!         call cg_close_f(cgns_file,ierror)
+!         if (ierror /= CG_OK) call cg_error_exit_f()
       end if
    end subroutine
    subroutine read_bc()
@@ -260,7 +263,8 @@ contains
       inquire(file=trim(file_bc),exist=fexists)
 
       if(.not. fexists) then
-        call error_out("GITTER INPUT DATEI konnte nicht gefunden werden: "//TRIM(file_bc),__FILE__,__LINE__)
+        call error_out("GITTER INPUT DATEI konnte nicht gefunden werden: " &
+                       //TRIM(file_bc),__FILE__,__LINE__)
       end if
 
       open(unit=fu,file=trim(file_bc),form="UNFORMATTED",access="STREAM",status="OLD")
@@ -309,34 +313,36 @@ contains
       use control, only : file_sol_in
       implicit none
       logical :: fexists, t_found
-      integer(kind=CGSIZE_T) :: cgns_file,ierror,cgns_base,PhysDim,cgns_zone
-      integer(kind=CGSIZE_T),allocatable :: isize(:,:),istart(:)
-      integer(kind=CGSIZE_T) :: data_location,zonetype,nSol,nVar_in,datatype,var
-      integer(kind=CGSIZE_T) :: rDimen,rnBlock
-      integer(kind=CGSIZE_T) :: b,n
+      integer(kind=8) :: cgns_file,ierror,cgns_base,PhysDim,cgns_zone
+      integer(kind=8),allocatable :: isize(:,:),istart(:)
+      integer(kind=8) :: data_location,zonetype,nSol,nVar_in,datatype,var
+      integer(kind=8) :: rDimen,rnBlock
+      integer(kind=8) :: b,n
       character(len=32)  :: solname,varname_in
 
       inquire(file=trim(file_sol_in),exist=fexists)
 
       if(.not. fexists) then
-        call error_out("RESTART DATEI konnte nicht gefunden werden: "//TRIM(file_sol_in),__FILE__,__LINE__)
+        call error_out("RESTART DATEI konnte nicht gefunden werden: " &
+                       //TRIM(file_sol_in),__FILE__,__LINE__)
       end if
 
 
-      call cg_open_f(trim(file_sol_in),CG_MODE_READ,cgns_file,ierror)
-      if (ierror /= CG_OK) call cg_error_exit_f()
+!      call cg_open_f(trim(file_sol_in),CG_MODE_READ,cgns_file,ierror)
+!      if (ierror /= CG_OK) call cg_error_exit_f()
 
-      call cg_nbases_f(cgns_file,cgns_base,ierror)
-      if (ierror /= CG_OK) call cg_error_exit_f()
+!      call cg_nbases_f(cgns_file,cgns_base,ierror)
+!      if (ierror /= CG_OK) call cg_error_exit_f()
 
       if (cgns_base /= 1) then
          call error_out("Restart File has more than one base",__FILE__,__LINE__)
       end if
-      call cg_base_read_f(cgns_file,cgns_base,cgns_basename,rDimen,PhysDim,ierror)
-      if (ierror /= CG_OK) call cg_error_exit_f()
+!      call cg_base_read_f(cgns_file,cgns_base,cgns_basename,rDimen,PhysDim,ierror)
+!      if (ierror /= CG_OK) call cg_error_exit_f()
 
       if (rDimen /= Dimen) then
-         call error_out("Restart File has differet dimensions than the grid.",__FILE__,__LINE__)
+         call error_out("Restart File has differet dimensions than the grid.", &
+                          __FILE__,__LINE__)
       end if
 
       allocate(isize(Dimen,3))
@@ -344,21 +350,22 @@ contains
 
       istart = 1
 
-      call cg_nzones_f(cgns_file,cgns_base,rnBlock,ierror)
-      if (ierror /= CG_OK) call cg_error_exit_f()
+!      call cg_nzones_f(cgns_file,cgns_base,rnBlock,ierror)
+!      if (ierror /= CG_OK) call cg_error_exit_f()
       if (nBlock /= rnBlock) then
-         call error_out("Sol #Blocks is different than Grid #Blocks",__FILE__,__LINE__)
+         call error_out("Sol #Blocks is different than Grid #Blocks", &
+                          __FILE__,__LINE__)
       end if
       do b = 1,nBlock
          cgns_zone = b
-         call cg_zone_read_f(cgns_file,cgns_base,cgns_zone,cgns_git_zonename(b),isize,ierror)
-         if (ierror /= CG_OK) call cg_error_exit_f()
+!         call cg_zone_read_f(cgns_file,cgns_base,cgns_zone,cgns_git_zonename(b),isize,ierror)
+!         if (ierror /= CG_OK) call cg_error_exit_f()
 
-         call cg_zone_type_f(cgns_file,cgns_base,cgns_zone,zonetype,ierror)
-         if (ierror /= CG_OK) call cg_error_exit_f()
-         if (zonetype /= Structured) then
-            call error_out("Only Structured Grid supported."//TRIM(file_sol_in),__FILE__,__LINE__)
-         end if
+!         call cg_zone_type_f(cgns_file,cgns_base,cgns_zone,zonetype,ierror)
+!         if (ierror /= CG_OK) call cg_error_exit_f()
+!         if (zonetype /= Structured) then
+!            call error_out("Only Structured Grid supported."//TRIM(file_sol_in),__FILE__,__LINE__)
+!         end if
          do n = 1,Dimen
             if (block(b) % nPkt(n) /= isize(n,1)) then
                call error_out("nPkt do not match",__FILE__,__LINE__)
@@ -368,27 +375,27 @@ contains
             end if
          end do
          !!!! CHECKING if more than one solution.
-         call cg_nsols_f(cgns_file,cgns_base,cgns_zone,nSol,ierror)
-         if (ierror /= CG_OK) call cg_error_exit_f()
+!         call cg_nsols_f(cgns_file,cgns_base,cgns_zone,nSol,ierror)
+!         if (ierror /= CG_OK) call cg_error_exit_f()
          if (nSol /= 1) then
             call error_out("More than One Solution in Restart-File",__FILE__,__LINE__)
          end if
          !!!! Checking if Cell-Centered
-         call cg_sol_info_f(cgns_file,cgns_base,cgns_zone,1,solname,data_location,ierror)
-         if (ierror /= CG_OK) call cg_error_exit_f()
-         if (data_location .ne. CellCenter) then
-            call error_out("Not Cell-Centered Data",__FILE__,__LINE__)
-         end if
-         call cg_nfields_f(cgns_file,cgns_base,cgns_zone,nSol,nVar_in,ierror)
-         if (ierror /= CG_OK) call cg_error_exit_f()
+!         call cg_sol_info_f(cgns_file,cgns_base,cgns_zone,1,solname,data_location,ierror)
+!         if (ierror /= CG_OK) call cg_error_exit_f()
+!         if (data_location .ne. CellCenter) then
+!            call error_out("Not Cell-Centered Data",__FILE__,__LINE__)
+!         end if
+!         call cg_nfields_f(cgns_file,cgns_base,cgns_zone,nSol,nVar_in,ierror)
+!         if (ierror /= CG_OK) call cg_error_exit_f()
          t_found = .false.
          do var = 1, nVar_in
-            call cg_field_info_f(cgns_file,cgns_base,cgns_zone,nSol,var,datatype,varname_in,ierror)
+!            call cg_field_info_f(cgns_file,cgns_base,cgns_zone,nSol,var,datatype,varname_in,ierror)
             if (varname_in == "Temperature") then
-            call cg_field_read_f(cgns_file,cgns_base,cgns_zone,nSol,varname_in,datatype       &
-                                   ,istart,isize(:,2),block(b) % t(1:block(b) % nCell(1)            &
-                                                                  ,1:block(b) % nCell(2)            &
-                                                                  ,1:block(b) % nCell(3),1),ierror)
+!            call cg_field_read_f(cgns_file,cgns_base,cgns_zone,nSol,varname_in,datatype       &
+!                                   ,istart,isize(:,2),block(b) % t(1:block(b) % nCell(1)            &
+!                                                                  ,1:block(b) % nCell(2)            &
+!                                                                  ,1:block(b) % nCell(3),1),ierror)
             t_found = .true.
             end if
          end do
@@ -398,8 +405,8 @@ contains
          end if
       end do
 
-      call cg_close_f(cgns_file,ierror)
-      if (ierror /= CG_OK) call cg_error_exit_f()
+!      call cg_close_f(cgns_file,ierror)
+!      if (ierror /= CG_OK) call cg_error_exit_f()
 
    end subroutine
 end module io

@@ -16,10 +16,11 @@ set (CMAKE_Fortran_COMPILER gfortran)
 
 # set the preporcessor directives for compilation
 set (PREPROC_DIRECTIVES "-DVERBOSE")
-
+set (GLOBAL_FLAGS "-ffree-form -Wextra -Wconversion -Wimplicit-interface -Wsurprising -ffree-line-length-130")
+# -std=f2008 -Wall 
 # set the compiler flags
-set (CMAKE_Fortran_FLAGS_RELEASE "${PREPROC_DIRECTIVES} -Wall -Wextra -Wimplicit-interface -Wsurprising -O3")
-set (CMAKE_Fortran_FLAGS_DEBUG   "${PREPROC_DIRECTIVES} -Wall -Wextra -Wimplicit-interface -Wsurprising")
+set (CMAKE_Fortran_FLAGS_RELEASE "${PREPROC_DIRECTIVES} ${GLOBAL_FLAGS}  -O3")
+set (CMAKE_Fortran_FLAGS_DEBUG   "${PREPROC_DIRECTIVES} ${GLOBAL_FLAGS} -fbacktrace -ffpe-trap=invalid,zero,overflow -fcheck=all -fbounds-check -g")
 set (CMAKE_BUILD_TYPE Debug)
 
 
