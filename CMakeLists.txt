@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 2.6)
+
 
 #--------------------------------------------
 #
@@ -45,5 +45,5 @@ include_directories(${HDF5_INCLUDE_DIRS}/shared)
 # Define the build & link
 #-------------------------
 add_executable (heat.exe ${sources})
-#target_link_libraries(heat.exe "${HDF5_Fortran_LIBRARIES}")
+#target_link_libraries(heat.exe "${HDF5}" "${HDF5_Fortran_LIBRARIES}")
 target_link_libraries(heat.exe "hdf5" "hdf5_fortran")
