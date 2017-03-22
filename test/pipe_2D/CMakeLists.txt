@@ -1,0 +1,5 @@
+add_executable(gridgen.exe gridgen.F90)
+#target_link_libraries(gridgen.exe "hdf5" "hdf5_fortran")
+target_link_libraries(gridgen.exe module_gridgen)
+#target_link_libraries(gridgen.exe PRIVATE "hdf5_fortran")
+add_custom_target(run ./gridgen.exe)

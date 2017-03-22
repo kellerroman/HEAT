@@ -1,47 +1,48 @@
 module mod_post
-use hdf5
-use file_io_mod, only: SOL_NAME_LENGTH
-use screen_io_mod, only: error_wr
-use const_mod, only: REAL_KIND, INT_KIND
+   use hdf5
+   use, intrinsic :: ISO_FORTRAN_ENV, only: stdout => OUTPUT_UNIT, stderr => ERROR_UNIT
 implicit none
-private
-integer         , parameter :: VARNAME_LENGTH        = 20
-character(len=*), parameter :: GROUP_GRID            = "grid"
-character(len=*), parameter :: GROUP_DATA            = "data"
-character(len=*), parameter :: GROUP_BLOCK           = "block"
+   private
+   integer, parameter :: REAL_KIND = selected_real_kind(15 , 307)
+   integer, parameter :: INT_KIND  = selected_int_kind(8)
+   integer         , parameter :: VARNAME_LENGTH        = 20
+   integer         , parameter :: SOL_NAME_LENGTH       = 11
+   character(len=*), parameter :: GROUP_GRID            = "grid"
+   character(len=*), parameter :: GROUP_DATA            = "data"
+   character(len=*), parameter :: GROUP_BLOCK           = "block"
 
-character(len=*) , parameter   :: COORD_NAME(3)      = [ "CoordinateX","CoordinateY","CoordinateZ" ]
+   character(len=*) , parameter   :: COORD_NAME(3)      = [ "CoordinateX","CoordinateY","CoordinateZ" ]
 
-integer, parameter     ::   RANK = 3                        ! dataset rank
+   integer, parameter     ::   RANK = 3                        ! dataset rank
 
-integer :: nBlock
-integer :: nVar
-integer :: nSol
-integer :: Dimen
-logical :: debug = .false.
+   integer :: nBlock
+   integer :: nVar
+   integer :: nSol
+   integer :: Dimen
+   logical :: debug = .false.
 
-character(len=VARNAME_LENGTH),  allocatable :: varnames(:)
-character(len=SOL_NAME_LENGTH), allocatable :: solnames(:)
+   character(len=VARNAME_LENGTH),  allocatable :: varnames(:)
+   character(len=SOL_NAME_LENGTH), allocatable :: solnames(:)
 
-type :: tsol
-   real(REAL_KIND), allocatable :: vars(:,:,:,:)
-end type
+   type :: tsol
+      real(REAL_KIND), allocatable :: vars(:,:,:,:)
+   end type
 
-type :: tblock
-   integer :: ncells(3)
-   integer :: npkts(3)
-   real(REAL_KIND), allocatable :: coords(:,:,:,:)
-   type(tsol), allocatable :: solutions(:)
-end type
+   type :: tblock
+      integer :: ncells(3)
+      integer :: npkts(3)
+      real(REAL_KIND), allocatable :: coords(:,:,:,:)
+      type(tsol), allocatable :: solutions(:)
+   end type
 
-type(tblock), allocatable :: blocks(:)
+   type(tblock), allocatable :: blocks(:)
 
-interface read_solution
-   module procedure read_solution_gf ! given Filename
-   module procedure read_solution_sf ! stadnard filename
-end interface read_solution
+   interface read_solution
+      module procedure read_solution_gf ! given Filename
+      module procedure read_solution_sf ! stadnard filename
+   end interface read_solution
 
-public:: blocks, debug, nblock, nVar, nSol, read_solution, varnames, solnames
+   public:: blocks, debug, nblock, nVar, nSol, read_solution, varnames, solnames
 
 contains
    subroutine read_solution_sf()
@@ -78,7 +79,8 @@ contains
    inquire(file=trim(filename),exist=fexists)
    
    if(.not. fexists) then
-     call error_wr("Data Input File konnte nicht gefunden werden: "//TRIM(filename),__FILE__,__LINE__)
+     call error_wr("Data Input File konnte nicht gefunden werden: " &
+                   //TRIM(filename),__FILE__,__LINE__)
    end if
    
    if (debug) &
@@ -185,4 +187,43 @@ contains
 
    end subroutine
 
+   subroutine error_wr(text,errorfile,errorline)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! PURPOSE: standard screen output with optional level and Coloring
+!
+! AUTHOR: Roman Keller(RK)
+!
+! START DATE: 04.03.2016
+! 
+! LAST CHANGE: 04.03.2016
+!
+! CHANGELOG:
+! 04.03.2016,RK: Start of Coding
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   implicit none
+      character(len=*),intent(in)           :: text
+      character(len=*),intent(in)           :: errorfile
+      integer         ,intent(in)           :: errorline
+      character(len=*), parameter           :: PRE_TEXT  = "=================" 
+   integer, parameter         :: SCREEN_WIDTH         = 100 
+   character(len=*),parameter :: FORMAT_SEPLINE       = '(100("="),/,100("="))'
+   character(len=*),parameter :: FORMAT_LINE          = '(3("="),1X,A92,1X,3("="))'
+   character(len=*),parameter :: RED_START            = achar(27)//"[31m"
+   character(len=*),parameter :: RED_END              = achar(27)//"[0m"                    
+   character(len=*),parameter :: GREEN_START          = achar(27)//"[32m"
+   character(len=*),parameter :: GREEN_END            = achar(27)//"[0m"                    
+
+      write(stderr,'(A,I0,A)')  RED_START         // &
+                                PRE_TEXT            // &
+                               "IN "//errorfile     // &
+                               "@ ",errorline        , &
+                                PRE_TEXT            // &
+                                RED_END
+      write(stderr,'(A)')  RED_START            // &
+                                PRE_TEXT            // &
+                                " "//text//" "      // &
+                                PRE_TEXT            // &
+                                RED_END
+      stop 1
+   end subroutine error_wr
 end module mod_post

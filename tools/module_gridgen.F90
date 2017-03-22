@@ -12,11 +12,7 @@ character(len=*), parameter :: GROUP_BLOCK           = "block"
 
 character(len=*) , parameter   :: COORD_NAME(3)      = [ "CoordinateX","CoordinateY","CoordinateZ" ]
 
-character(len=VARNAME_LENGTH), parameter :: VARNAME_RHO   = "Density"     ! dataset name
-character(len=VARNAME_LENGTH), parameter :: VARNAME_SPU   = "Geschw_U"    ! dataset name
-character(len=VARNAME_LENGTH), parameter :: VARNAME_SPV   = "Geschw_V"    ! dataset name
-character(len=VARNAME_LENGTH), parameter :: VARNAME_SPW   = "Geschw_W"    ! dataset name
-character(len=VARNAME_LENGTH), parameter :: VARNAME_ENE   = "Energie"     ! dataset name
+character(len=VARNAME_LENGTH), parameter :: VARNAME   = "Temperatur"     ! dataset name
 integer, parameter     ::   RANK = 3                        ! dataset rank
 integer :: nblock = 0
 integer :: nVar = 4
@@ -27,7 +23,7 @@ type :: tblock
    integer :: ncells(3)
    integer :: npkts(3)
    real(kind = 8), allocatable :: xyzs(:,:,:,:)
-   real(kind = 8), allocatable :: vars(:,:,:,:)
+   real(kind = 8), allocatable :: temps(:,:,:)
    integer :: boundary_condition(6)
 end type
 type(tblock), allocatable :: blocks(:)
@@ -61,9 +57,8 @@ contains
          write(*,*) "Adding Block: NB:",nblock,"(ni,nj,nk)",ni,nj,nk
    end subroutine
 
-   subroutine allocate_blocks(anzahl_var)
+   subroutine allocate_blocks()
       implicit none
-      integer, intent(in) :: anzahl_var
       integer :: i
       if (blocks_allocated) then
          write(*,*) "allocate_blocks: Canno allocate Blocks"
@@ -72,12 +67,6 @@ contains
       end if
       if (nblock > 0) then
          blocks_allocated = .true.
-         if (anzahl_var < 5) then
-            write(*,*) "allocate_blocks: Cannot allocate Blocks"
-            write(*,*) "Passed nVar is to small",anzahl_var
-         else
-            nvar = anzahl_var
-         end if
 
          if (debug) &
             write(*,*) "Allocate Blocks",nblock,"nVar:",nVar
@@ -90,7 +79,7 @@ contains
                write(*,*) i, blocks(i)%ncells, blocks(i) % npkts
             end if
             allocate(blocks(i) % xyzs(blocks(i) %  npkts(1),blocks(i) %  npkts(2),blocks(i) %  npkts(3),3))
-            allocate(blocks(i) % vars(blocks(i) % ncells(1),blocks(i) % ncells(2),blocks(i) % ncells(3),nvar)) 
+            allocate(blocks(i) % temps(blocks(i) % ncells(1),blocks(i) % ncells(2),blocks(i) % ncells(3)))
          end do
       else
          write(*,*) "allocate_blocks: Cannot allocate Blocks"
@@ -114,15 +103,10 @@ contains
       
    character(len=7) :: block_group
 
-   character(len=VARNAME_LENGTH), allocatable :: varname_out(:)
-
    integer :: nb 
    integer :: nd
    integer                         :: file_unit
 
-   allocate(varname_out(nvar))
-   
-   varname_out = [VARNAME_RHO,VARNAME_SPU,VARNAME_SPV,VARNAME_SPW,VARNAME_ENE]
    if (debug) &
       write(*,*) "write_grid: Writing HDF5 output File"
 
@@ -176,13 +160,11 @@ contains
       ! Create a group named for block1 in the file.
       call h5gcreate_f(group_id1, block_group, group_id2, error)
        
-      do nd = 1, nVar
       
-         call h5dcreate_f(group_id2, varname_out(nd), h5t_native_double, dspace_id, &
-              dset_id, error)
-         call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, blocks(nb) % vars(:,:,:,nd), dims2, error)
-         call h5dclose_f(dset_id, error)
-      end do
+      call h5dcreate_f(group_id2, VARNAME, h5t_native_double, dspace_id, &
+                       dset_id, error)
+      call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, blocks(nb) % temps(:,:,:), dims2, error)
+      call h5dclose_f(dset_id, error)
 
       ! terminate access to the data space.
       call h5sclose_f(dspace_id, error)
@@ -200,13 +182,13 @@ contains
    
    ! close fortran interface.
    call h5close_f(error)
-   open(newunit = file_unit, file=trim(FILENAME_BC),form="unformatted",access="stream")
-   do nb = 1, nBlock
-      do nd = 1,6
-         write(file_unit) blocks(nb) % boundary_condition(nd) 
-      end do
-   end do
-   close(file_unit)
+!   open(newunit = file_unit, file=trim(FILENAME_BC),form="unformatted",access="stream")
+!   do nb = 1, nBlock
+!      do nd = 1,6
+!         write(file_unit) blocks(nb) % boundary_condition(nd) 
+!      end do
+!   end do
+!   close(file_unit)
 
    end subroutine
 
@@ -214,17 +196,12 @@ contains
    implicit none
    integer :: fu
 
-   character(len=VARNAME_LENGTH), allocatable :: varname_out(:)
 
    character(len=7) :: block_group
 
    integer :: nb 
    integer :: nd
    integer :: d
-
-   allocate(varname_out(nvar))
-   
-   varname_out = [VARNAME_RHO,VARNAME_SPU,VARNAME_SPV,VARNAME_SPW,VARNAME_ENE]
 
    if (debug) &
       write(*,*) "write_xdmf: Writing XDMF output File"
@@ -253,12 +230,12 @@ contains
       end do
       write(fu,'(A)') '     </Geometry>'
       do nd = 1, nVar
-         write(fu,'(3A)') '     <Attribute Name="',trim(varname_out(nd)),'" Center="Cell">'
+         write(fu,'(3A)') '     <Attribute Name="',trim(VARNAME),'" Center="Cell">'
          write(fu,'(A,3(I0,1X),A)') '       <DataItem Dimensions="'&
                                    ,(blocks(nb) % npkts(d),d=1,RANK) &
                                    ,'" NumberType="Float" Precision="7" Format="HDF">'
          write(fu,'(8X,A,":",4("/",A))') FILENAME,GROUP_DATA,"0"&
-                                        ,trim(block_group),trim(varname_out(nd))
+                                        ,trim(block_group),trim(VARNAME)
          write(fu,'(A)') '       </DataItem>'
          write(fu,'(A)') '     </Attribute>'
       end do

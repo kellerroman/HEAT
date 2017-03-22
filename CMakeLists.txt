@@ -2,9 +2,13 @@
 
 #--------------------------------------------
 #
-#   CMAKE CONFIG FILE FOR    NS3DNEO
+#   CMAKE CONFIG FILE FOR HEAT
 #
+#   Author: Roman Keller
+#    Start: 22.03.2017
+#     Last: 22.03.2017
 #--------------------------------------------
+cmake_minimum_required(VERSION 3.7)
 project (HEAT)
 enable_language (Fortran)
 
@@ -33,8 +37,8 @@ file (GLOB_RECURSE sources src/*.F90)
 # Include HDF5 Library
 #--------------------------
 # On DLR MAchine hdf5 is loaded by module 
-set (CMAKE_PREFIX_PATH /media/LDS/module/software/libs/hdf5/1.8.17_gnu)
-
+#set (CMAKE_PREFIX_PATH /media/LDS/module/software/libs/hdf5/1.8.17_gnu)
+set(HDF5_ROOT /media/LDS/module/software/libs/hdf5/1.8.17_gnu)
 find_package(HDF5 REQUIRED)
 
 include_directories(${HDF5_INCLUDE_DIRS})
@@ -47,3 +51,6 @@ include_directories(${HDF5_INCLUDE_DIRS}/shared)
 add_executable (heat.exe ${sources})
 #target_link_libraries(heat.exe "${HDF5}" "${HDF5_Fortran_LIBRARIES}")
 target_link_libraries(heat.exe "hdf5" "hdf5_fortran")
+
+add_subdirectory(tools)
+add_subdirectory(test)
