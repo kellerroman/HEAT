@@ -38,7 +38,8 @@ file (GLOB_RECURSE sources src/*.F90)
 #--------------------------
 # On DLR MAchine hdf5 is loaded by module 
 #set (CMAKE_PREFIX_PATH /media/LDS/module/software/libs/hdf5/1.8.17_gnu)
-set(HDF5_ROOT /media/LDS/module/software/libs/hdf5/1.8.17_gnu)
+#set(HDF5_ROOT /media/LDS/module/software/libs/hdf5/1.8.17_gnu)
+set(HDF5_ROOT $ENV{HDF5_HOME})
 find_package(HDF5 REQUIRED)
 
 include_directories(${HDF5_INCLUDE_DIRS})
