@@ -29,5 +29,7 @@
 *.app
 
 #Build Directory
-
 /build
+
+#VIM temp files
+.*.swp

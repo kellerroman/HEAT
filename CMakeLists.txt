@@ -34,7 +34,7 @@ file (GLOB_RECURSE sources src/*.F90)
 # Set up the EAS3 paths :(
 #--------------------------
 #set (EAS3_LIBEXT "_x86_64_r8i4")
-find_package(HDF5 REQUIRED PATHS /media/LDS/module/software/libs/hdf5/1.8.17_gnu/share/cmake/ )
+find_package(HDF5 REQUIRED)
 #find_library(EAS3_BASELIB   NAMES "baselib${EAS3_LIBEXT}"   HINTS "$ENV{BASELIB_DIR}/${EAS3_LIBEXT}")
 #find_library(EAS3_N3DLIB    NAMES "n3dlib${EAS3_LIBEXT}"    HINTS "$ENV{N3DLIB_DIR}/${EAS3_LIBEXT}")
 #find_library(EAS3_EAS3IOMOD NAMES "eas3iomod${EAS3_LIBEXT}" HINTS "$ENV{EAS3IOMOD_DIR}/${EAS3_LIBEXT}")
@@ -48,4 +48,5 @@ include_directories(${HDF5_INCLUDE_DIRS})
 # Define the build & link
 #-------------------------
 add_executable (heat.exe ${sources})
-target_link_libraries(heat.exe  "${HDF5_LIBRARIES}")
+#target_link_libraries(heat.exe "${HDF5_Fortran_LIBRARIES}")
+target_link_libraries(heat.exe "hdf5" "hdf5_fortran")
