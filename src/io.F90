@@ -1,14 +1,15 @@
 module io
 !   use cgnslib
 !   use cgns_types, ONLY: CGSIZE_T
+   use hdf5
    use const
    use control, only: Dimen,nFace,nCorner,n_BC_Cell
    implicit none
-   character(len=32),allocatable :: cgns_git_zonename(:)
-   character(len=32) :: cgns_git_basename
-   character(len=32) :: cgns_basename
    logical :: write_sol_header = .true.
 
+   character(len=*), parameter :: GROUP_GRID            = "grid"
+   character(len=*), parameter :: GROUP_DATA            = "data"
+   character(len=*), parameter :: GROUP_BLOCK           = "block"
 contains
    subroutine error_out (text,file,line)
       implicit none
@@ -28,11 +29,12 @@ contains
       use control, only: file_git_in
       implicit none
 
+      integer(hid_t) :: file_id       ! file identifier
+      integer(hid_t) :: group_id      ! dataset identifier
       integer(kind=8) :: b ,d
       logical :: fexists
-      integer(kind=8) :: cgns_file,ierror,cgns_base,PhysDim,cgns_zone,zonetype
+      integer     ::   error ! Error flag
       integer(kind=8),allocatable :: isize(:,:),istart(:)
-      character(len=32),parameter :: coord_name(3) = (/ "CoordinateX","CoordinateY","CoordinateZ" /)
       real(kind=dp), allocatable :: temp_coord(:,:,:)
 
       nCell = 0
@@ -45,18 +47,17 @@ contains
       end if
 
 
-!      call cg_open_f(trim(file_git_in),CG_MODE_READ,cgns_file,ierror)
-!      if (ierror /= CG_OK) call cg_error_exit_f()
+      ! Initialize FORTRAN interface.
+      call h5open_f(error)
 
-!      call cg_nbases_f(cgns_file,cgns_base,ierror)
-!      if (ierror /= CG_OK) call cg_error_exit_f()
+      ! Open an existing file.
+      call h5fopen_f (trim(file_git_in), h5f_acc_rdwr_f, file_id, error)
 
-      if (cgns_base /= 1) then
-         call error_out("Input Grid File has more than one base" &
-                          ,__FILE__,__LINE__)
-      end if
+      call h5gopen_f(file_id,GROUP_GRID,group_id,error)
 
-!      call cg_base_read_f(cgns_file,cgns_base,cgns_git_basename,Dimen,PhysDim,ierror)
+      call h5gn_members_f(file_id, GROUP_GRID, nBlock, error)
+      !!!!!!!!! ONLY ONE BLOCK SUPPORTED AT THE MOMENT
+      Dimen = 3
 
       allocate(isize(Dimen,3))
       allocate(istart(Dimen))
@@ -65,23 +66,10 @@ contains
       nCorner = 2**Dimen
       istart = 1
 
-!      call cg_nzones_f(cgns_file,cgns_base,nBlock,ierror)
-!      if (ierror /= CG_OK) call cg_error_exit_f()
 
       allocate(block(nBlock))
-      allocate(cgns_git_zonename(nBlock))
 
       do b = 1,nBlock
-         cgns_zone = b
-!         call cg_zone_read_f(cgns_file,cgns_base,cgns_zone,cgns_git_zonename(b),isize,ierror)
-!         if (ierror /= CG_OK) call cg_error_exit_f()
-
-!         call cg_zone_type_f(cgns_file,cgns_base,cgns_zone,zonetype,ierror)
-!         if (ierror /= CG_OK) call cg_error_exit_f()
-!         if (zonetype /= Structured) then
-!            call error_out("Only Structured Grid supported." &
-!                             //TRIM(file_git_in),__FILE__,__LINE__)
-!         end if
          block(b) % nPkt = 1
          block(b) % nCell = 1
          block(b) % nPkt(1:Dimen) = int(isize(1:Dimen,1))
@@ -93,9 +81,6 @@ contains
                                  ,Dimen))
          allocate (temp_coord(block(b)%nPkt(1),block(b)%nPkt(2),block(b)%nPkt(3)))
          do d = 1,Dimen
-!            call cg_coord_read_f(cgns_file,cgns_base,cgns_zone,coord_name(d),RealDouble &
-!                                ,istart,isize(:,1),temp_coord,ierror)
-!            if (ierror /= CG_OK) call cg_error_exit_f()
             block(b) % xyz(1:block(b)%nPkt(1) &
                           ,1:block(b)%nPkt(2) &
                           ,1:block(b)%nPkt(3),d) = temp_coord
@@ -103,15 +88,17 @@ contains
          deallocate (temp_coord)
 
       end do
-
-!      call cg_close_f(cgns_file,ierror)
-!      if (ierror /= CG_OK) call cg_error_exit_f()
       write(*,*) "GIT IN"
       write(*,*) dimen,nblock,ncell
       do b = 1,nBlock
          write(*,*) b,block(b) % nCell
       end do
 
+      ! close the file.
+      call h5fclose_f(file_id, error)
+      
+      ! close fortran interface.
+      call h5close_f(error)
    end subroutine read_git
 
    subroutine write_sol()

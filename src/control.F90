@@ -1,10 +1,10 @@
 module control
    use const, only : dp
    implicit none
-   character(len=*), parameter :: file_git_in   = "data_in.cgns"
-   character(len=*), parameter :: file_sol_out  = "data_out.cgns"
+   character(len=*), parameter :: file_git_in   = "data_in.h5"
+   character(len=*), parameter :: file_sol_out  = "data_out.h5"
    character(len=*), parameter :: file_bc       = "bc.bin"
-   character(len=*), parameter :: file_sol_in   = "data_in.cgns"
+   character(len=*), parameter :: file_sol_in   = "data_in.h5"
    integer :: n_BC_Cell = 1
    integer :: Dimen
    integer :: nFace
