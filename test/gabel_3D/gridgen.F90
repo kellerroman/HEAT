@@ -14,6 +14,7 @@ integer, parameter :: di_2         = 3
 integer, parameter :: di_3         = 10
 !< Verschiebung der Blockansatzes in i-Richtung fuer block 3 relativ zu block 1
 
+integer, parameter :: ONE         = 1
 INTEGER, PARAMETER :: ioout = 10
 integer, parameter :: Version = 1001
 
@@ -21,7 +22,8 @@ integer, parameter :: bc(6) = (/BC_SYMMETRY,BC_SYMMETRY,BC_SYMMETRY,BC_SYMMETRY,
 !integer, parameter :: bc(6) = (/BC_ISOTHERMAL,BC_SYMMETRY,BC_SYMMETRY,BC_SYMMETRY,BC_SYMMETRY,BC_SYMMETRY/)
 
 
-real(kind=8) :: temp = 300.0D0
+real(kind=8) :: hf = 20000.0D0
+real(kind=8) :: temp = 1234.0D0
 
 integer :: i,j,k,b
 integer :: b2c   !Block to Connect
@@ -89,6 +91,8 @@ do b = 1,NBLOCK
    end do
 end do
 
+blocks(2) % temps (1:2,1,1:2) = 2000.0D0
+
 call write_grid()
 call write_xdmf()
 
@@ -115,11 +119,11 @@ j = 2
 ! Noedseite hat 5 verschieden Randbedingungen
 write(ioout) k
 ! Erste Randbedingung bis zum Anschluss von B2 
-write(ioout) bc(4),i,kmax(b),i,di_2-1
+write(ioout) bc(4),ONE,kmax(b),ONE,di_2-1
 ! Anschluss von Block 2
 ! Ueber die gesammt k dimesnion und in i-Richtung entlang der blocklaenge
 b2c = 2
-write(ioout) b2c,i,kmax(b),di_2,di_2+imax(b2c)
+write(ioout) b2c,ONE,kmax(b),di_2,di_2+imax(b2c)
 ! Block 2 ist auch auf CPU 0
 write(ioout) 0
 ! Index Verschiebungsmatrix
@@ -127,11 +131,11 @@ write(ioout) -di_2+1, 1, 0, 0   !I1
 write(ioout)  -jmax(1), 0, 1, 0   !i2
 write(ioout)  0, 0, 0, 1   !i3
 ! Dritte Randbedinugng zwischen den Bloecken
-write(ioout) bc(4),i,kmax(b),di_2+imax(b2c)+1,di_3-1
+write(ioout) bc(4),ONE,kmax(b),di_2+imax(b2c)+1,di_3-1
 ! Anschluss von Block 3
 ! Ueber die gesammt k dimesnion und in i-Richtung entlang der blocklaenge
 b2c = 3
-write(ioout) b2c,i,kmax(b),di_3,di_3+imax(b2c)
+write(ioout) b2c,ONE,kmax(b),di_3,di_3+imax(b2c)
 ! Block 3 ist auch auf CPU 0
 write(ioout) 0
 ! Index Verschiebungsmatrix
@@ -139,58 +143,60 @@ write(ioout) -di_3+1   , 1, 0, 0   !I1
 write(ioout)  -jmax(1) , 0, 1, 0   !i2
 write(ioout)  0        , 0, 0, 1   !i3
 ! Fuenfte Randbedinugng zwischen den Bloecken
-write(ioout) bc(4),i,kmax(b),di_3+imax(b2c)+1,imax(b)
+write(ioout) bc(4),ONE,kmax(b),di_3+imax(b2c)+1,imax(b)
 
 !BACK
-write(ioout) i,bc(5),i,jmax(b),i,imax(b)
+write(ioout) ONE,bc(5),ONE,jmax(b),ONE,imax(b)
 
 !FRONT
-write(ioout) i,bc(6),i,jmax(b),i,imax(b)
+write(ioout) ONE,bc(6),ONE,jmax(b),ONE,imax(b)
 
 b = 2
 !WEST
-write(ioout) i,bc(1),i,kmax(b),i,jmax(b)
+write(ioout) ONE,bc(1),ONE,kmax(b),ONE,jmax(b)
 if (bc(1) == BC_ISOTHERMAL) then
    write(ioout) ((temp,j=1,jmax(b)),k=1,kmax(b))
 end if
 !OST
-write(ioout) i,bc(2),i,kmax(b),i,jmax(b)
+write(ioout) ONE,bc(2),ONE,kmax(b),ONE,jmax(b)
 !SUED
 !write(ioout) i,bc(3),i,kmax(b),i,imax(b)
-write(ioout) 1,1,i,kmax(b),i,imax(b)
+write(ioout) ONE,ONE,ONE,kmax(b),ONE,imax(b)
 write(ioout) 0
 write(ioout)  di_2-1  , 1, 0, 0   !I1
 write(ioout)  jmax(1) , 0, 1, 0   !i2
 write(ioout)  0       , 0, 0, 1   !i3
 
 !NORD
-write(ioout) i,bc(4),i,kmax(b),i,imax(b)
+write(ioout) ONE,BC_ISOTHERMAL,ONE,kmax(b),ONE,imax(b)
+write(ioout) ((temp,i=1,imax(b)),k=1,kmax(b))
 !BACK
-write(ioout) i,bc(5),i,jmax(b),i,imax(b)
+write(ioout) ONE,bc(5),ONE,jmax(b),ONE,imax(b)
 !FRONT
-write(ioout) i,bc(6),i,jmax(b),i,imax(b)
+write(ioout) ONE,bc(6),ONE,jmax(b),ONE,imax(b)
 
 b = 3
 !WEST
-write(ioout) i,bc(1),i,kmax(b),i,jmax(b)
+write(ioout) ONE,bc(1),ONE,kmax(b),ONE,jmax(b)
 if (bc(1) == BC_ISOTHERMAL) then
    write(ioout) ((temp,j=1,jmax(b)),k=1,kmax(b))
 end if
 !OST
-write(ioout) i,bc(2),i,kmax(b),i,jmax(b)
+write(ioout) ONE,bc(2),ONE,kmax(b),ONE,jmax(b)
 !SÜD
 !write(ioout) i,bc(3),i,kmax(b),i,imax(b)
-write(ioout) 1,1,i,kmax(b),i,imax(b)
+write(ioout) ONE,ONE,ONE,kmax(b),ONE,imax(b)
 write(ioout) 0
 write(ioout)  di_3-1  , 1, 0, 0   !I1
 write(ioout)  jmax(1) , 0, 1, 0   !i2
 write(ioout)  0       , 0, 0, 1   !i3
 !NORD
-write(ioout) i,bc(4),i,kmax(b),i,imax(b)
+write(ioout) ONE,BC_HEATFLUX,ONE,kmax(b),ONE,imax(b)
+write(ioout) ((hf,i=1,imax(b)),k=1,kmax(b))
 !BACK
-write(ioout) i,bc(5),i,jmax(b),i,imax(b)
+write(ioout) ONE,bc(5),ONE,jmax(b),ONE,imax(b)
 !FRONT
-write(ioout) i,bc(6),i,jmax(b),i,imax(b)
+write(ioout) ONE,bc(6),ONE,jmax(b),ONE,imax(b)
 
 close (ioout)
 

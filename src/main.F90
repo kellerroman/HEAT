@@ -19,12 +19,14 @@ program HEAT
    do iter = 1, max_iter
       do inner_iter = 1, n_inner_iter
          if (.not. given_time_step) time_step = 1E10_dp
+         if (.not.implicit) then
+            call update_boundary(block       = block                             &
+                                ,nblock      = nBlock                            &
+                                ,inner_iter  = inner_iter)
+         end if
          do b = 1, nBlock
             if (.not.implicit) then
                !!! UPDATE BOUNDARY CELLS ACCORDING TO BOUNDARY CODITIONS
-               call update_boundary(block       = block                             &
-                                   ,nblock      = nBlock                            &
-                                   ,inner_iter  = inner_iter)
 
                !!! CALCULATE FLUXES
                call calc_flux ( T               = block(b) % T   (:,:,:,inner_iter)   &
@@ -86,5 +88,6 @@ program HEAT
       call write_sol()
       call write_mpnt()
    end do
+   write(*,*) block(3) % flux (1,1:block(3) % nPkt(2),1,2)
    write(*,'(A)') "DONE!"
 end program HEAT

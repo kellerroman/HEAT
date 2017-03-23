@@ -11,15 +11,15 @@ module control
    integer :: nCorner
    integer :: iter
    integer :: inner_iter
-   integer :: max_iter = 50
+   integer :: max_iter = 200
    integer :: n_inner_iter = 1
-   integer :: iter_sol_out = 10
+   integer :: iter_sol_out = 1
    integer :: iter_res_out = 1000
    logical :: sol_out = .false.
 !   logical :: given_time_step = .false.
    logical :: given_time_step = .true.
    logical :: const_time_step = .true.
-   real(kind=dp) :: time_step = 1.0E-5_dp
+   real(kind=dp) :: time_step = 1.0E-9_dp
    real(kind=dp) :: sol_time = 0.0E0_dp
    real(kind=dp) :: CFL = 1.0E0_dp
 

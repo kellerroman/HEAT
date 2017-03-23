@@ -194,7 +194,7 @@ contains
       if (sol_out) then
          CALL h5open_f(error)
          sol_out = .false.
-         write(*,*) "Writing Solution to File"
+         !write(*,*) "Writing Solution to File"
 
          if (write_sol_header) then
             write_sol_header = .false.
@@ -319,7 +319,7 @@ contains
 
                   end if
 
-                  write(*,*) b,f,bc,BC_Type,block(b) % face(f) % BC(bc) % dist, block(b) % face(f) % BC(bc) % ncell
+                  write(*,*) b,f,nBC,bc,BC_Type,block(b) % face(f) % BC(bc) % dist, block(b) % face(f) % BC(bc) % ncell
 
                end do
             end do

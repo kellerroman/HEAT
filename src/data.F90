@@ -94,7 +94,7 @@ contains
                      ,1 : block(b)%nCell (3) ))
          end if
          block(b) % a = 385.0E0_dp
-         block(b) % T = 200
+!         block(b) % T = 200
          block(b) % dt = time_step
       end do
 
