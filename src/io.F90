@@ -10,6 +10,7 @@ module io
    character(len=*), parameter :: GROUP_GRID            = "grid"
    character(len=*), parameter :: GROUP_DATA            = "data"
    character(len=*), parameter :: GROUP_BLOCK           = "block"
+   character(len=*) , parameter   :: COORD_NAME(3)      = [ "CoordinateX","CoordinateY","CoordinateZ" ]
 contains
    subroutine error_out (text,file,line)
       implicit none
@@ -24,18 +25,30 @@ contains
       stop 1
    end subroutine error_out
 
-   subroutine read_git()
+   subroutine read_sol()
       use data, only : nCell, nBlock, block
-      use control, only: file_git_in
+      use control, only: file_git_in,n_inner_iter
       implicit none
 
       integer(hid_t) :: file_id       ! file identifier
+      integer(hid_t) :: dset_id       ! dataset identifier
       integer(hid_t) :: group_id      ! dataset identifier
+      integer(hid_t) :: group_id1     ! dataset identifier
+      integer(hid_t) :: group_id2     ! dataset identifier
+      integer(hid_t) :: dspace_id     ! dataspace identifier
+      integer        :: solution_type ! dataspace identifier
+      integer        :: var_type ! dataspace identifier
+      integer        ::   hdf5_nSol, nVar_in
+      character(len=len(GROUP_BLOCK)+2) :: block_group
+      integer(HSIZE_T) :: dims(3)
+      integer(HSIZE_T) :: maxdims(3)
       integer(kind=8) :: b ,d
       logical :: fexists
       integer     ::   error ! Error flag
       integer(kind=8),allocatable :: isize(:,:),istart(:)
-      real(kind=dp), allocatable :: temp_coord(:,:,:)
+      real(kind=dp), allocatable :: data_in(:,:,:)
+      character(len=20) :: varname_in
+      character(len=10) :: solution_name
 
       nCell = 0
 
@@ -70,36 +83,90 @@ contains
       allocate(block(nBlock))
 
       do b = 1,nBlock
+         write(block_group,'(A,I0)') GROUP_BLOCK, b
+         call h5gopen_f(group_id,block_group,group_id2,error)
          block(b) % nPkt = 1
          block(b) % nCell = 1
-         block(b) % nPkt(1:Dimen) = int(isize(1:Dimen,1))
-         block(b) % nCell(1:Dimen) = int(isize(1:Dimen,2))
+         call h5dopen_f(group_id2, COORD_NAME(1), dset_id, error)
+         call h5dget_space_f(dset_id,dspace_id,error)
+         
+         call h5sget_simple_extent_ndims_f(dspace_id,dimen,error)
+         call h5sget_simple_extent_dims_f(dspace_id,dims,maxdims,error)
+
+         call h5dclose_f(dset_id, error)
+         block(b) % nPkt = INT(dims,ip)
+         block(b) % nCell(1:Dimen) = max(0,block(b) % nPkt - 1)
          nCell = nCell + product(block(b) % nCell)
          allocate (block(b) % xyz(1-n_BC_Cell : block(b)%nPkt(1)+n_BC_Cell &
                                  ,1-n_BC_Cell : block(b)%nPkt(2)+n_BC_Cell &
                                  ,1-n_BC_Cell : block(b)%nPkt(3)+n_BC_Cell &
                                  ,Dimen))
-         allocate (temp_coord(block(b)%nPkt(1),block(b)%nPkt(2),block(b)%nPkt(3)))
+         allocate (block(b) % T  ( 1-n_BC_Cell:block(b) % nCell(1)+n_BC_Cell &
+                                 , 1-n_BC_Cell:block(b) % nCell(2)+n_BC_Cell &
+                                 , 1-n_BC_Cell:block(b) % nCell(3)+n_BC_Cell &
+                                 , n_inner_iter ) )
+         allocate (data_in(block(b)%nPkt(1),block(b)%nPkt(2),block(b)%nPkt(3)))
+
          do d = 1,Dimen
+            call h5dopen_f(group_id2, COORD_NAME(d), dset_id, error)
+            call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, data_in, dims, error)
             block(b) % xyz(1:block(b)%nPkt(1) &
                           ,1:block(b)%nPkt(2) &
-                          ,1:block(b)%nPkt(3),d) = temp_coord
+                          ,1:block(b)%nPkt(3),d) = data_in
+            call h5dclose_f(dset_id, error)
          end do
-         deallocate (temp_coord)
+         deallocate (data_in)
+         call h5gclose_f(group_id2, error)
 
       end do
-      write(*,*) "GIT IN"
-      write(*,*) dimen,nblock,ncell
-      do b = 1,nBlock
-         write(*,*) b,block(b) % nCell
+      call h5gclose_f(group_id, error) ! CLOSE GRID GROUP
+      write(*,*) 
+      do b = 1, nBlock
+         write(*,*) b, block(b) % nCell
       end do
+      !!!!
+      !!!! READING GRID DONE
+      !!!!
 
+      call h5gopen_f(file_id,GROUP_DATA,group_id,error)
+      call h5gn_members_f(file_id, GROUP_DATA, hdf5_nSol, error)
+      !!!!!!!!! ONLY ONE BLOCK SUPPORTED AT THE MOMENT
+      if (hdf5_nSol > 1) then
+         call error_out("More than One Solution in Restart-File",__FILE__,__LINE__)
+      end if
+      call h5gget_obj_info_idx_f(file_id, GROUP_DATA, 0,solution_name, solution_type, error)
+      !write(*,*) solution_name
+      call h5gopen_f(group_id,solution_name,group_id1,error) ! OPEN TIMESTEP GROUP
+      do b = 1, nBlock
+         write(block_group,'(A,I0)') GROUP_BLOCK,b
+         !write(*,*) "opening", block_group
+         call h5gopen_f(group_id1,block_group,group_id2,error)
+         call h5gn_members_f(group_id1, block_group, nVar_in, error)
+         allocate (data_in(block(b)%nCell(1),block(b)%nCell(2),block(b)%nCell(3)))
+         call h5gget_obj_info_idx_f(group_id1, block_group, 0,varName_in, var_type, error)
+         call h5dopen_f(group_id2, varName_in, dset_id, error)
+         call h5dget_space_f(dset_id,dspace_id,error)
+         
+         call h5sget_simple_extent_dims_f(dspace_id,dims,maxdims,error)
+
+         call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, data_in, dims, error)
+         call h5dclose_f(dset_id, error)
+         block(b) % T (1:block(b) % nCell(1)            &
+                      ,1:block(b) % nCell(2)            &
+                      ,1:block(b) % nCell(3),1) = data_in
+         deallocate(data_in)
+         call h5gclose_f(group_id2, error)
+      end do
+      
+      call h5gclose_f(group_id1, error) !CLOSE TIMESTEP GROUP
+      call h5gclose_f(group_id, error)  !CLOSE DATA GROUP
       ! close the file.
       call h5fclose_f(file_id, error)
       
       ! close fortran interface.
       call h5close_f(error)
-   end subroutine read_git
+      write(*,*) "Datin DONE"
+   end subroutine read_sol
 
    subroutine write_sol()
       use data, only : nBlock, block
@@ -295,105 +362,4 @@ contains
       close(fu)
    end subroutine read_bc
 
-   subroutine read_sol()
-      use data, only : nBlock, block
-      use control, only : file_sol_in
-      implicit none
-      logical :: fexists, t_found
-      integer(kind=8) :: cgns_file,ierror,cgns_base,PhysDim,cgns_zone
-      integer(kind=8),allocatable :: isize(:,:),istart(:)
-      integer(kind=8) :: data_location,zonetype,nSol,nVar_in,datatype,var
-      integer(kind=8) :: rDimen,rnBlock
-      integer(kind=8) :: b,n
-      character(len=32)  :: solname,varname_in
-
-      inquire(file=trim(file_sol_in),exist=fexists)
-
-      if(.not. fexists) then
-        call error_out("RESTART DATEI konnte nicht gefunden werden: " &
-                       //TRIM(file_sol_in),__FILE__,__LINE__)
-      end if
-
-
-!      call cg_open_f(trim(file_sol_in),CG_MODE_READ,cgns_file,ierror)
-!      if (ierror /= CG_OK) call cg_error_exit_f()
-
-!      call cg_nbases_f(cgns_file,cgns_base,ierror)
-!      if (ierror /= CG_OK) call cg_error_exit_f()
-
-      if (cgns_base /= 1) then
-         call error_out("Restart File has more than one base",__FILE__,__LINE__)
-      end if
-!      call cg_base_read_f(cgns_file,cgns_base,cgns_basename,rDimen,PhysDim,ierror)
-!      if (ierror /= CG_OK) call cg_error_exit_f()
-
-      if (rDimen /= Dimen) then
-         call error_out("Restart File has differet dimensions than the grid.", &
-                          __FILE__,__LINE__)
-      end if
-
-      allocate(isize(Dimen,3))
-      allocate(istart(Dimen))
-
-      istart = 1
-
-!      call cg_nzones_f(cgns_file,cgns_base,rnBlock,ierror)
-!      if (ierror /= CG_OK) call cg_error_exit_f()
-      if (nBlock /= rnBlock) then
-         call error_out("Sol #Blocks is different than Grid #Blocks", &
-                          __FILE__,__LINE__)
-      end if
-      do b = 1,nBlock
-         cgns_zone = b
-!         call cg_zone_read_f(cgns_file,cgns_base,cgns_zone,cgns_git_zonename(b),isize,ierror)
-!         if (ierror /= CG_OK) call cg_error_exit_f()
-
-!         call cg_zone_type_f(cgns_file,cgns_base,cgns_zone,zonetype,ierror)
-!         if (ierror /= CG_OK) call cg_error_exit_f()
-!         if (zonetype /= Structured) then
-!            call error_out("Only Structured Grid supported."//TRIM(file_sol_in),__FILE__,__LINE__)
-!         end if
-         do n = 1,Dimen
-            if (block(b) % nPkt(n) /= isize(n,1)) then
-               call error_out("nPkt do not match",__FILE__,__LINE__)
-            end if
-            if (block(b) % nCell(n) /= isize(n,2)) then
-               call error_out("nCell do not match.",__FILE__,__LINE__)
-            end if
-         end do
-         !!!! CHECKING if more than one solution.
-!         call cg_nsols_f(cgns_file,cgns_base,cgns_zone,nSol,ierror)
-!         if (ierror /= CG_OK) call cg_error_exit_f()
-         if (nSol /= 1) then
-            call error_out("More than One Solution in Restart-File",__FILE__,__LINE__)
-         end if
-         !!!! Checking if Cell-Centered
-!         call cg_sol_info_f(cgns_file,cgns_base,cgns_zone,1,solname,data_location,ierror)
-!         if (ierror /= CG_OK) call cg_error_exit_f()
-!         if (data_location .ne. CellCenter) then
-!            call error_out("Not Cell-Centered Data",__FILE__,__LINE__)
-!         end if
-!         call cg_nfields_f(cgns_file,cgns_base,cgns_zone,nSol,nVar_in,ierror)
-!         if (ierror /= CG_OK) call cg_error_exit_f()
-         t_found = .false.
-         do var = 1, nVar_in
-!            call cg_field_info_f(cgns_file,cgns_base,cgns_zone,nSol,var,datatype,varname_in,ierror)
-            if (varname_in == "Temperature") then
-!            call cg_field_read_f(cgns_file,cgns_base,cgns_zone,nSol,varname_in,datatype       &
-!                                   ,istart,isize(:,2),block(b) % t(1:block(b) % nCell(1)            &
-!                                                                  ,1:block(b) % nCell(2)            &
-!                                                                  ,1:block(b) % nCell(3),1),ierror)
-            t_found = .true.
-            end if
-         end do
-         if (.not.t_found) then
-            call error_out("Temperature not found in Restart File",__FILE__,__LINE__)
-
-         end if
-      end do
-
-!      call cg_close_f(cgns_file,ierror)
-!      if (ierror /= CG_OK) call cg_error_exit_f()
-
-   end subroutine
 end module io

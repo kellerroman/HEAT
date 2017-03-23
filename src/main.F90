@@ -1,5 +1,5 @@
 program HEAT
-   use io, only : read_git,write_sol,read_bc,read_sol
+   use io, only : read_sol,write_sol,read_bc
    use control
 !   use solver
    use data!, only: init,block,nBlock
@@ -12,10 +12,9 @@ program HEAT
    integer :: b,n
 
    write(*,'(A)') "HEAT SOLVER"
-   call read_git()
+   call read_sol()
    call read_bc()
    call init()
-   call read_sol()
    call init_mpnt()
    do iter = 1, max_iter
       do inner_iter = 1, n_inner_iter

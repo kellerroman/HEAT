@@ -1,23 +1,30 @@
 program gridgen
 
    use mod_gridgen
+   use const
 implicit none
 
 
-integer, parameter :: NBLOCK = 3
+integer, parameter :: NBLOCK       = 3
 integer, parameter :: imax(NBLOCK) = (/17,4,5/)
 integer, parameter :: jmax(NBLOCK) = (/3,5,4/)
-integer, parameter :: kmax(NBLOCK) = (/8,3,2/)
+integer, parameter :: kmax(NBLOCK) = (/8,8,8/)
+integer, parameter :: di_2         = 3
+!< Verschiebung der Blockansatzes in i-Richtung fuer block 2 relativ zu block 1
+integer, parameter :: di_3         = 10
+!< Verschiebung der Blockansatzes in i-Richtung fuer block 3 relativ zu block 1
 
 INTEGER, PARAMETER :: ioout = 10
 integer, parameter :: Version = 1001
 
-integer, parameter :: bc(6) = (/-1,-3,-3,-3,-3,-3/)
+integer, parameter :: bc(6) = (/BC_SYMMETRY,BC_SYMMETRY,BC_SYMMETRY,BC_SYMMETRY,BC_SYMMETRY,BC_SYMMETRY/)
+!integer, parameter :: bc(6) = (/BC_ISOTHERMAL,BC_SYMMETRY,BC_SYMMETRY,BC_SYMMETRY,BC_SYMMETRY,BC_SYMMETRY/)
 
 
 real(kind=8) :: temp = 300.0D0
 
 integer :: i,j,k,b
+integer :: b2c   !Block to Connect
 
 write(*,'(A)') "SIMPLE GRID GEN"
 
@@ -33,33 +40,35 @@ do i = 1,imax(1)+1
 
          blocks(b) % xyzs(i,j,k,2) = 1.0D-1 * dble(j-1)
 
-         blocks(b) % xyzs(i,j,k,3) = 1.0D-1 * dble(k-1)
+         blocks(b) % xyzs(i,j,k,3) = 1.0D-1 * dble(k-1)!+1.0D-1 * dble(i-1)
       end do
    end do
 end do
 
 b = 2
+blocks(b) % xyzs(:,1,:,:) = blocks(1) % xyzs(di_2:di_2+imax(b)+1,jmax(1)+1,:,:)
 do i = 1,imax(b)+1
-   do j = 1,jmax(b)+1
+   do j = 2,jmax(b)+1
       do k = 1,kmax(b)+1
-         blocks(b) % xyzs(i,j,k,1) = blocks(1) % xyzs(3,jmax(1)+1,k,1) + 1.0D-1 * dble(i-1)
+         blocks(b) % xyzs(i,j,k,1) = blocks(b) % xyzs(i,1,k,1)
 
-         blocks(b) % xyzs(i,j,k,2) = blocks(1) % xyzs(i+1,jmax(1)+1,k,2) + 1.0D-1 * dble(j-1)
+         blocks(b) % xyzs(i,j,k,2) = blocks(b) % xyzs(i,1,k,2) + 1.0D-1 * dble(j-1)
 
-         blocks(b) % xyzs(i,j,k,3) = blocks(1) % xyzs(i,jmax(1)+1,3,3) + 1.0D-1 * dble(k-1)
+         blocks(b) % xyzs(i,j,k,3) = blocks(b) % xyzs(i,1,k,3)
       end do
    end do
 end do
 
 b = 3
+blocks(b) % xyzs(:,1,:,:) = blocks(1) % xyzs(di_3:di_3+imax(b)+1,jmax(1)+1,:,:)
 do i = 1,imax(b)+1
-   do j = 1,jmax(b)+1
+   do j = 2,jmax(b)+1
       do k = 1,kmax(b)+1
-         blocks(b) % xyzs(i,j,k,1) = blocks(1) % xyzs(10,jmax(1)+1,k,1) + 1.0D-1 * dble(i-1)
+         blocks(b) % xyzs(i,j,k,1) = blocks(b) % xyzs(i,1,k,1)
 
-         blocks(b) % xyzs(i,j,k,2) = blocks(1) % xyzs(i+7,jmax(1)+1,k,2) + 1.0D-1 * dble(j-1)
+         blocks(b) % xyzs(i,j,k,2) = blocks(b) % xyzs(i,1,k,2) + 1.0D-1 * dble(j-1)
 
-         blocks(b) % xyzs(i,j,k,3) = blocks(1) % xyzs(i,jmax(1)+1,4,3) + 1.0D-1 * dble(k-1)
+         blocks(b) % xyzs(i,j,k,3) = blocks(b) % xyzs(i,1,k,3)
       end do
    end do
 end do
@@ -85,35 +94,59 @@ i = 1
 write (ioout) Version,nBlock
 b = 1
 !WEST
-write(ioout) i,-3,i,kmax(b),1,jmax(b)
-!write(ioout) ((temp,j=1,jmax(1)),k=1,kmax(1))
+write(ioout) i,bc(1),i,kmax(b),1,jmax(b)
+if (bc(1) == BC_ISOTHERMAL) then
+   write(ioout) ((temp,j=1,jmax(b)),k=b,kmax(b))
+end if
+
 !OST
 write(ioout) i,bc(2),i,kmax(b),i,jmax(b)
 
 !SÜD
-
 write(ioout) i,bc(3),i,kmax(b),i,imax(b)
 
 !NORD
-k = 3
+k = 5
 j = 2
+! Noedseite hat 5 verschieden Randbedingungen
 write(ioout) k
-write(ioout) bc(4),i,kmax(b),i,5
-
-write(ioout) 2,i,kmax(b),6,10
+! Erste Randbedingung bis zum Anschluss von B2 
+write(ioout) bc(4),i,kmax(b),i,di_2-1
+! Anschluss von Block 2
+! Ueber die gesammt k dimesnion und in i-Richtung entlang der blocklaenge
+b2c = 2
+write(ioout) b2c,i,kmax(b),di_2,di_2+imax(b2c)
+! Block 2 ist auch auf CPU 0
 write(ioout) 0
-write(ioout) -5, 1, 0, 0   !I1
+! Index Verschiebungsmatrix
+write(ioout) -di_2+1, 1, 0, 0   !I1
 write(ioout)  -jmax(1), 0, 1, 0   !i2
 write(ioout)  0, 0, 0, 1   !i3
-write(ioout) bc(4),i,kmax(b),11,15
+! Dritte Randbedinugng zwischen den Bloecken
+write(ioout) bc(4),i,kmax(b),di_2+imax(b2c)+1,di_3-1
+! Anschluss von Block 3
+! Ueber die gesammt k dimesnion und in i-Richtung entlang der blocklaenge
+b2c = 3
+write(ioout) b2c,i,kmax(b),di_3,di_3+imax(b2c)
+! Block 3 ist auch auf CPU 0
+write(ioout) 0
+! Index Verschiebungsmatrix
+write(ioout) -di_3+1, 1, 0, 0   !I1
+write(ioout)  -jmax(1), 0, 1, 0   !i2
+write(ioout)  0, 0, 0, 1   !i3
+
 !BACK
 write(ioout) i,bc(5),i,jmax(b),i,imax(b)
+
 !FRONT
 write(ioout) i,bc(6),i,jmax(b),i,imax(b)
 
 b = 2
 !WEST
-write(ioout) i,bc(2),i,kmax(b),1,jmax(b)
+write(ioout) i,bc(1),i,kmax(b),i,jmax(b)
+if (bc(1) == BC_ISOTHERMAL) then
+   write(ioout) ((temp,j=1,jmax(b)),k=1,kmax(b))
+end if
 !OST
 write(ioout) i,bc(2),i,kmax(b),i,jmax(b)
 !SÜD
@@ -130,6 +163,26 @@ write(ioout) i,bc(4),i,kmax(b),i,imax(b)
 write(ioout) i,bc(5),i,jmax(b),i,imax(b)
 !FRONT
 write(ioout) i,bc(6),i,jmax(b),i,imax(b)
+
+b = 3
+!WEST
+write(ioout) i,bc(2),i,kmax(b),i,jmax(b)
+!OST
+write(ioout) i,bc(2),i,kmax(b),i,jmax(b)
+!SÜD
+!write(ioout) i,bc(3),i,kmax(b),i,imax(b)
+write(ioout) 1,1,i,kmax(b),i,imax(b)
+write(ioout) 0
+write(ioout)  5, 1, 0, 0   !I1
+write(ioout)  jmax(1), 0, 1, 0   !i2
+write(ioout)  0, 0, 0, 1   !i3
+!NORD
+write(ioout) i,bc(4),i,kmax(b),i,imax(b)
+!BACK
+write(ioout) i,bc(5),i,jmax(b),i,imax(b)
+!FRONT
+write(ioout) i,bc(6),i,jmax(b),i,imax(b)
+
 close (ioout)
 
 

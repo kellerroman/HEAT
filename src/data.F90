@@ -35,11 +35,6 @@ contains
       n_mat_element = 0
       do b = 1,nBlock
 
-         allocate (block(b) % T &
-                  ( 1-n_BC_Cell:block(b) % nCell(1)+n_BC_Cell &
-                  , 1-n_BC_Cell:block(b) % nCell(2)+n_BC_Cell &
-                  , 1-n_BC_Cell:block(b) % nCell(3)+n_BC_Cell &
-                  , n_inner_iter ) )
 
          allocate (block(b) % a &
                   ( 1-n_BC_Cell:block(b) % nCell(1)+n_BC_Cell &
