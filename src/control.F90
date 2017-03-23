@@ -23,6 +23,6 @@ module control
    real(kind=dp) :: sol_time = 0.0E0_dp
    real(kind=dp) :: CFL = 1.0E0_dp
 
-   logical :: implicit = .true.
-!   logical :: implicit = .false.
+!   logical :: implicit = .true.
+   logical :: implicit = .false.
 end module control

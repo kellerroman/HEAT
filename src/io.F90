@@ -1,16 +1,18 @@
 module io
-!   use cgnslib
-!   use cgns_types, ONLY: CGSIZE_T
    use hdf5
    use const
    use control, only: Dimen,nFace,nCorner,n_BC_Cell
    implicit none
    logical :: write_sol_header = .true.
 
+   integer         , parameter :: VARNAME_LENGTH        = 20
+
    character(len=*), parameter :: GROUP_GRID            = "grid"
    character(len=*), parameter :: GROUP_DATA            = "data"
    character(len=*), parameter :: GROUP_BLOCK           = "block"
    character(len=*) , parameter   :: COORD_NAME(3)      = [ "CoordinateX","CoordinateY","CoordinateZ" ]
+   character(len=VARNAME_LENGTH), parameter :: VARNAME   = "Temperatur"     ! dataset name
+
 contains
    subroutine error_out (text,file,line)
       implicit none
@@ -172,133 +174,96 @@ contains
       use data, only : nBlock, block
       use control, only : iter,sol_out,file_sol_out,iter_sol_out,max_iter,file_git_in
       implicit none
-      integer(kind=8) :: cgns_file,ierror,cgns_base,cgns_zone,cgns_sol,cgns_var,cgns_coord
-      integer(kind=8),allocatable :: isize(:,:)
-      integer(kind=8) :: iter_in_file
       character(len=32)  :: solname
-      character(len=100) :: linkname
-      character(len=11),parameter :: coordnames(3) = (/"CoordinateX","CoordinateY","CoordinateZ"/)
-      integer(kind=8) :: b,d
+      
+      integer(hsize_t) :: dims(3)
+      real(kind=dp), allocatable :: data_out(:,:,:)
+
+      character(len=7)           :: block_group
+      integer(hid_t)             :: file_id                          ! file identifier
+      integer(hid_t)             :: dset_id                          ! dataset identifier
+      integer(hid_t)             :: group_id                         ! dataset identifier
+      integer(hid_t)             :: group_id1                        ! dataset identifier
+      integer(hid_t)             :: group_id2                        ! dataset identifier
+      integer(hid_t)             :: dspace_id                        ! dataspace identifier
+      integer                    :: error                            ! error flag
+      integer                    :: b,d
       if (mod(iter,iter_sol_out) == 0 .or. iter == max_iter) then
          sol_out = .true.
       end if
       if (sol_out) then
+         CALL h5open_f(error)
          sol_out = .false.
          write(*,*) "Writing Solution to File"
 
-         write(solname,'(I0)') iter
          if (write_sol_header) then
-!            write(*,*) "Writing New Solution to File "//trim(file_sol_out)
             write_sol_header = .false.
 
-!            call cg_open_f(trim(file_sol_out),CG_MODE_WRITE,cgns_file,ierror)
-!            if (ierror /= CG_OK) call cg_error_exit_f()
+            call h5fcreate_f(file_sol_out, h5f_acc_trunc_f, file_id, error)
 
-!            call cg_base_write_f(cgns_file,"SOLUTION",Dimen,Dimen,cgns_base,ierror)
-!            if (ierror /= CG_OK) call cg_error_exit_f()
-
-            allocate(isize(Dimen,3))
-            isize = 0
+            call h5gcreate_f(file_id,  GROUP_GRID, group_id,  error)
 
             do b = 1, nBlock
-
-               isize(:,1) = block(b) % nPkt(1:Dimen)
-               isize(:,2) = block(b) % nCell(1:Dimen)
-
-!               call cg_zone_write_f(cgns_file,cgns_base,cgns_git_zonename(b),isize,Structured,cgns_zone,ierror)
-
-!               if (ierror /= CG_OK) call cg_error_exit_f()
+               dims(:) = block(b) % nPkt  (1:Dimen)
+               call h5screate_simple_f(Dimen, dims, dspace_id, error)
+               write(block_group,'(A,I0)') GROUP_BLOCK,b
+               call h5gcreate_f(group_id, block_group, group_id2, error)
+               allocate (data_out ( block(b) % nPkt(1), block(b) % nPkt(2), block(b) % nPkt(3) ))
                do d = 1, Dimen
-!                  call cg_coord_write_f(cgns_file,cgns_base,cgns_zone,RealDouble,coordnames(d) &
-!                                       ,block(b) % xyz(1:block(b) % nPkt(1)            &
-!                                                      ,1:block(b) % nPkt(2)            &
-!                                                      ,1:block(b) % nPkt(3),d),cgns_coord,ierror)
-!                  if (ierror /= CG_OK) call cg_error_exit_f()
+                  data_out = block(b) % xyz(1:block(b) % nPkt(1)            &
+                                           ,1:block(b) % nPkt(2)            &
+                                           ,1:block(b) % nPkt(3),d)
+                  call h5dcreate_f(group_id2, COORD_NAME(d), h5t_native_double, dspace_id, &
+                                  dset_id, error)
+                  call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, data_out, dims, error)
+                  call h5dclose_f(dset_id, error)
                end do
-
-!               write(*,*) "WRITING GRID LINK"
-!               write(linkname,'(A,"/",A,"/GridCoordinates")') trim(cgns_git_basename),trim(cgns_git_zonename(b))
-!               write(*,*) trim(linkname)
-!               call cg_goto_f(cgns_file,cgns_base,ierror,cgns_git_zonename(b),0,"end")
-!               if (ierror /= CG_OK) call cg_error_exit_f()
-!               call cg_link_write_f("GridCoordinates",trim(file_git_in),trim(linkname),ierror)
-!               if (ierror /= CG_OK) call cg_error_exit_f()
-
-      !         call cg_ziter_write_f(cgns_file,cgns_base,cgns_zone,'ZoneIterativeData',ierror)
-      !         call cg_goto_f(cgns_file,cgns_base,ierror,'Zone_t',cgns_zone,'ZoneIterativeData_t',1,'end')
-      !         call cg_array_write_f('FlowSolutionPointers',Character,1,32,solname,ierror)
-
+            ! Close the group.
+            call h5gclose_f(group_id2, error)
+            deallocate(data_out)
             end do
-!            call cg_biter_write_f(cgns_file,cgns_base,"TimeIterValues",1,ierror)
-
-
-      !      call cg_goto_f(cgns_file,cgns_base,ierror,'BaseIterativeData_t',1,'end')
-      !      allocate(iter_time(2))
-      !      iter_time = dble(iteration)
-      !      call cg_array_write_f('TimeValues',RealDouble,1,2,iter_time,ierror)
-
+            call h5gclose_f(group_id, error)
+            call h5gcreate_f(file_id,  GROUP_DATA, group_id,  error)
          else
-!            write(*,*) "Appending Solution to existing File: "//trim(file_sol_out)
-!            call cg_open_f(trim(file_sol_out),CG_MODE_MODIFY,cgns_file,ierror)
-!            if (ierror /= CG_OK) call cg_error_exit_f()
-!            write(*,*) "reading nbases"
-!            call cg_nbases_f(cgns_file,cgns_base,ierror)
-!            if (ierror /= CG_OK) call cg_error_exit_f()
-
-      !      call cg_zone_type_f(cgns_file,cgns_base,cgns_zone,zonetype,ierror)
-      !      if (ierror /= CG_OK) call cg_error_exit_f()
-      !      if (zonetype /= Structured) then
-      !         call error_out("Only Structured Grid supported."//TRIM(file_git_in),__FILE__,__LINE__)
-      !      end if
-
-!            call cg_biter_read_f(cgns_file,cgns_base,linkname,iter_in_file,ierror)
-            iter_in_file = iter_in_file + 1
-!            write(*,*) "Iterations on File:",iter_in_file
-!            call cg_biter_write_f(cgns_file,cgns_base,linkname,iter_in_file,ierror)
-
-      !      if (iter_in_file == 2) then
-      !
-      !      else
-      !         call cg_goto_f(cgns_file,cgns_base,ierror,'BaseIterativeData_t',1,'end')
-      !         allocate(iter_time(iter_in_file))
-      !
-      !         iter_time = dble(iteration)
-      !         call cg_array_write_f('TimeValues',RealDouble,1,2,iter_time,ierror)
-      !
-      !      end if
-      !      if (iter_in_file == 2) then
-      !         do b = 1,nBlock
-      !            cgns_zone = b
-      !            call cg_ziter_write_f(cgns_file,cgns_base,cgns_zone,'ZoneIterativeData',ierror)
-      !            call cg_goto_f(cgns_file,cgns_base,ierror,'Zone_t',cgns_zone,'ZoneIterativeData_t',1,'end')
-      !            call cg_array_write_f('FlowSolutionPointers',Character,1,32,solname,ierror)
-      !         end do
-      !      else
-      !      end if
+            !write(*,*) "Open excisting file"
+            CALL h5fopen_f (file_sol_out, H5F_ACC_RDWR_F, file_id, error)
+            call h5gopen_f(file_id,GROUP_DATA,group_id,error)
          end if
 
+         write(solname,'(I10.10)') iter
+         call h5gcreate_f(group_id,  trim(solname), group_id1,  error)
          do b = 1,nBlock
-            cgns_zone = b
 
-!            call cg_sol_write_f(cgns_file,cgns_base,cgns_zone,solname,CellCenter,cgns_sol,ierror)
-!            if (ierror /= CG_OK) call cg_error_exit_f()
-!            call cg_field_write_f(cgns_file,cgns_base,cgns_zone,cgns_sol,RealDouble         &
-!                                 ,"Temperature",block(b) % T(1:block(b) % nCell(1)            &
-!                                                            ,1:block(b) % nCell(2)            &
-!                                                            ,1:block(b) % nCell(3),1),cgns_var,ierror)
-!            call cg_field_write_f(cgns_file,cgns_base,cgns_zone,cgns_sol,RealDouble         &
-!                                 ,"Heat Transfer Koeff",block(b) % a(1:block(b) % nCell(1)            &
-!                                                            ,1:block(b) % nCell(2)            &
-!                                                            ,1:block(b) % nCell(3),1),cgns_var,ierror)
-!            call cg_field_write_f(cgns_file,cgns_base,cgns_zone,cgns_sol,RealDouble         &
-!                                 ,"Temperature Residual",block(b) % res(1:block(b) % nCell(1)            &
-!                                                            ,1:block(b) % nCell(2)            &
-!                                                            ,1:block(b) % nCell(3),1),cgns_var,ierror)
+            write(block_group,'(A,I0)') GROUP_BLOCK,b
+            dims = block(b) % nCell 
+            call h5screate_simple_f(Dimen, dims, dspace_id, error)
+
+            ! Create a group named for block1 in the file.
+            call h5gcreate_f(group_id1, block_group, group_id2, error)
+            allocate (data_out(block(b) % nCell(1),block(b) % nCell(2),block(b) % nCell(3))) 
+            data_out = block(b) % T(1:block(b) % nCell(1)  &
+                                   ,1:block(b) % nCell(2)  &
+                                   ,1:block(b) % nCell(3),1)
+            call h5dcreate_f(group_id2, VARNAME, h5t_native_double, dspace_id, &
+                 dset_id, error)
+            call h5dwrite_f(dset_id, H5T_NATIVE_DOUBLE, data_out, dims, error)
+            call h5dclose_f(dset_id, error)
+            ! terminate access to the data space.
+            call h5sclose_f(dspace_id, error)
+            ! Close the group.
+            call h5gclose_f(group_id2, error)
+            deallocate(data_out)
          end do
-!         call cg_close_f(cgns_file,ierror)
-!         if (ierror /= CG_OK) call cg_error_exit_f()
+         call h5gclose_f(group_id1, error)
+         ! Close the group.
+         call h5gclose_f(group_id, error)
+         ! close the file.
+         call h5fclose_f(file_id, error)
+         
+         ! close fortran interface.
+         call h5close_f(error)
       end if
-   end subroutine
+   end subroutine write_sol
    subroutine read_bc()
       use control, only : file_bc
       use data, only : nBlock, block

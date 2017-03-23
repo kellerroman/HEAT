@@ -77,9 +77,13 @@ do b = 1,NBLOCK
    do i = 1,imax(b)
       do j = 1,jmax(b)
          do k = 1,kmax(b)
-            blocks(b) % temps(i,j,k) = dble(i)
-            blocks(b) % temps(i,j,k) = dble(j)
-            blocks(b) % temps(i,j,k) = dble(k)
+            if (b == 1) then
+               blocks(b) % temps(i,j,k) = 1000.0D0 !dble(i)
+            elseif (b == 2) then
+               blocks(b) % temps(i,j,k) = 1100.0D0 !dble(j)
+            else
+               blocks(b) % temps(i,j,k) = 1200.0D0 !dble(k)
+            end if
          end do
       end do
    end do
@@ -131,9 +135,11 @@ write(ioout) b2c,i,kmax(b),di_3,di_3+imax(b2c)
 ! Block 3 ist auch auf CPU 0
 write(ioout) 0
 ! Index Verschiebungsmatrix
-write(ioout) -di_3+1, 1, 0, 0   !I1
-write(ioout)  -jmax(1), 0, 1, 0   !i2
-write(ioout)  0, 0, 0, 1   !i3
+write(ioout) -di_3+1   , 1, 0, 0   !I1
+write(ioout)  -jmax(1) , 0, 1, 0   !i2
+write(ioout)  0        , 0, 0, 1   !i3
+! Fuenfte Randbedinugng zwischen den Bloecken
+write(ioout) bc(4),i,kmax(b),di_3+imax(b2c)+1,imax(b)
 
 !BACK
 write(ioout) i,bc(5),i,jmax(b),i,imax(b)
@@ -149,13 +155,13 @@ if (bc(1) == BC_ISOTHERMAL) then
 end if
 !OST
 write(ioout) i,bc(2),i,kmax(b),i,jmax(b)
-!SÜD
+!SUED
 !write(ioout) i,bc(3),i,kmax(b),i,imax(b)
 write(ioout) 1,1,i,kmax(b),i,imax(b)
 write(ioout) 0
-write(ioout)  5, 1, 0, 0   !I1
-write(ioout)  jmax(1), 0, 1, 0   !i2
-write(ioout)  0, 0, 0, 1   !i3
+write(ioout)  di_2-1  , 1, 0, 0   !I1
+write(ioout)  jmax(1) , 0, 1, 0   !i2
+write(ioout)  0       , 0, 0, 1   !i3
 
 !NORD
 write(ioout) i,bc(4),i,kmax(b),i,imax(b)
@@ -166,16 +172,19 @@ write(ioout) i,bc(6),i,jmax(b),i,imax(b)
 
 b = 3
 !WEST
-write(ioout) i,bc(2),i,kmax(b),i,jmax(b)
+write(ioout) i,bc(1),i,kmax(b),i,jmax(b)
+if (bc(1) == BC_ISOTHERMAL) then
+   write(ioout) ((temp,j=1,jmax(b)),k=1,kmax(b))
+end if
 !OST
 write(ioout) i,bc(2),i,kmax(b),i,jmax(b)
 !SÜD
 !write(ioout) i,bc(3),i,kmax(b),i,imax(b)
 write(ioout) 1,1,i,kmax(b),i,imax(b)
 write(ioout) 0
-write(ioout)  5, 1, 0, 0   !I1
-write(ioout)  jmax(1), 0, 1, 0   !i2
-write(ioout)  0, 0, 0, 1   !i3
+write(ioout)  di_3-1  , 1, 0, 0   !I1
+write(ioout)  jmax(1) , 0, 1, 0   !i2
+write(ioout)  0       , 0, 0, 1   !i3
 !NORD
 write(ioout) i,bc(4),i,kmax(b),i,imax(b)
 !BACK
